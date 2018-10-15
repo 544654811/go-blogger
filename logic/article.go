@@ -42,14 +42,14 @@ func GetArticleRelativeList(categoryId int64) (list []*model.ArticleRelative, er
 	return
 }
 
-func GetPreAndNextArticleByArticleId(articleId int64) (preArticle *model.ArticleRelative, nextArticle *model.ArticleRelative, err error) {
-	preArticle, err = db.GetPreArticleByArticleId(articleId)
-	if err != nil {
-		fmt.Println("get pre article failed, ", err)
+func GetPreAndNextArticleByArticleId(articleId int64) (preArticle *model.ArticleRelative, nextArticle *model.ArticleRelative) {
+	preArticle, err1 := db.GetPreArticleByArticleId(articleId)
+	if err1 != nil {
+		preArticle.ArticleID = -1
 	}
-	nextArticle, err = db.GetPreArticleByArticleId(articleId)
-	if err != nil {
-		fmt.Println("get next article failed, ", err)
+	nextArticle, err2 := db.GetNextArticleByArticleId(articleId)
+	if err2 != nil {
+		nextArticle.ArticleID = -1
 	}
 	return
 }
@@ -62,6 +62,30 @@ func GetArticleDetail(articleId int64) (detail *model.ArticleDetail, err error) 
 func GetArticleRecordList(pageNo, pageSize int) (list []*model.ArticleRecord, err error) {
 	// 获取所有文章列表
 	articleList, err := db.GetArticleList(pageNo, pageSize)
+	if err != nil {
+		fmt.Println("get articleList err, ", err)
+		return
+	}
+
+	if articleList == nil || len(articleList) == 0 {
+		return
+	}
+	// 得到文章列表中存在的分类id（不重复）
+	categoryIds := getCategoryIds(articleList)
+	// 获取所需的分类信息
+	categoryList, err := db.GetCategoryListByCategoryIds(categoryIds)
+	if err != nil {
+		fmt.Println("get categoryList err, ", err)
+		return
+	}
+	// 组装 articleRecord 信息
+	list = buildArticleRecord(articleList, categoryList)
+	return
+}
+
+func GetArticleRecordListByCategoryId(categroyId int64, pageNo, pageSize int) (list []*model.ArticleRecord, err error) {
+	// 获取所有文章列表
+	articleList, err := db.GetArticleListByCategoryId(categroyId, pageNo, pageSize)
 	if err != nil {
 		fmt.Println("get articleList err, ", err)
 		return

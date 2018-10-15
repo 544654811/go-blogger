@@ -13,7 +13,7 @@ func main() {
 	router := gin.Default()
 
 	// 初始化mysql数据库配置
-	dns := "root:123@tcp(localhost:3306)/blogger?parseTime=true"
+	dns := "root:root@tcp(localhost:3306)/blogger?parseTime=true"
 	err := db.InitDb(dns)
 	if err != nil {
 		fmt.Println("初始化数据库错误..", err)
@@ -31,5 +31,12 @@ func main() {
 	router.GET("/article/new", controller.ToPostArticle)
 
 	router.POST("/article/submit/", controller.PostArticleHandle)
+
+	router.POST("/comment/submit/", controller.PostCommentHandle)
+
+	router.GET("/leave/new/", controller.ToLeave)
+	router.POST("/leave/submit/", controller.PostLeaveHandle)
+
+	router.GET("/category/", controller.ToCategory)
 	router.Run(":9090")
 }

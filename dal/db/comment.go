@@ -23,3 +23,14 @@ func GetCommentListByArticleId(articleId int64) (commentList []*model.Comment, e
 	}
 	return
 }
+
+func InsertComment(comment *model.Comment)error{
+	sql := `insert into comment (content, username, article_id) values (?,?,?)`
+
+	_, err := DB.Exec(sql, comment.Content, comment.Username, comment.ArticleID)
+	if err != nil {
+		fmt.Println("insert comment failed, ", err)
+		return err
+	}
+	return nil
+}

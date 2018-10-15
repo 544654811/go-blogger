@@ -29,6 +29,33 @@ func ToIndex(c *gin.Context) {
 	c.HTML(http.StatusOK, "views/index.html", data)
 }
 
+func ToCategory(c *gin.Context) {
+	categoryIdStr := c.Query("category_id")
+	categoryId, err := strconv.ParseInt(categoryIdStr, 10, 64)
+	if err != nil{
+		fmt.Println("ToCategory-invalid parameter, ", err)
+		c.HTML(http.StatusInternalServerError, "views/500.html", nil)
+		return
+	}
+	atricleRecordList, err := logic.GetArticleRecordListByCategoryId(categoryId,1, 15)
+	if err != nil {
+		fmt.Println("get articleRecord list failed, ", err)
+		return
+	}
+
+	allCategoryList, err := logic.GetAllCategoryList()
+	if err != nil {
+		fmt.Println("get allCategory list failed, ", err)
+		return
+	}
+
+	var data map[string]interface{} = make(map[string]interface{}, 15)
+	data["article_list"] = atricleRecordList
+	data["category_list"] = allCategoryList
+
+	c.HTML(http.StatusOK, "views/index.html", data)
+}
+
 func ToArticleDetail(c *gin.Context) {
 	articleIDStr := c.Query("article_id")
 	articleID, err := strconv.ParseInt(articleIDStr, 10, 64)
@@ -50,11 +77,8 @@ func ToArticleDetail(c *gin.Context) {
 		return
 	}
 	// 获取上下篇文章信息
-	preAtricle, nextAtricle, err := logic.GetPreAndNextArticleByArticleId(articleID)
-	if err != nil {
-		fmt.Println("ToArticleDetail-GetPreAndNextArticleByArticleId failed, ", err)
-		return
-	}
+	preAtricle, nextAtricle := logic.GetPreAndNextArticleByArticleId(articleID)
+
 	// 获取文章的相关文章
 	articleRelativeList, err := logic.GetArticleRelativeList(articleDetail.ArticleInfo.CategoryId)
 	if err != nil {
@@ -69,6 +93,12 @@ func ToArticleDetail(c *gin.Context) {
 		fmt.Println("ToArticleDetail-UpdateArticleForViewCount failed, ", err)
 		return
 	}
+	// 栏目导航
+	categorys, err := logic.GetAllCategoryList()
+	if err != nil || !flag {
+		fmt.Println("ToArticleDetail-GetAllCategoryList failed, ", err)
+		return
+	}
 
 	data := make(map[string]interface{})
 	data["detail"] = articleDetail
@@ -76,6 +106,8 @@ func ToArticleDetail(c *gin.Context) {
 	data["prev"] = preAtricle
 	data["next"] = nextAtricle
 	data["relative_article"] = articleRelativeList
+	data["categorys"] = categorys
+	data["articleId"] = articleID
 
 	c.HTML(http.StatusOK, "views/detail.html", data)
 }
@@ -108,4 +140,40 @@ func PostArticleHandle(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusMovedPermanently, "/")
+}
+
+func PostCommentHandle(c *gin.Context){
+	articleIdStr := c.PostForm("article_id")
+	comment := c.PostForm("comment")
+	author := c.PostForm("author")
+	//fmt.Printf("articleIdStr: %s, comment: %s, author: %s /n", articleIdStr, comment, author)
+
+	articleId, err := strconv.ParseInt(articleIdStr, 10, 64)
+	if err != nil {
+		fmt.Printf("articleIdStr parse articleId error: %v", err)
+		c.HTML(http.StatusInternalServerError, "views/500.html", nil)
+	}
+	
+	logic.InstertComment(comment, author, articleId)
+	url := fmt.Sprintf("/article/detail?article_id=%d", articleId)
+	c.Redirect(http.StatusMovedPermanently, url)
+}
+
+func ToLeave(c *gin.Context){
+	list, err := logic.GetAllLeave()
+	if err != nil{
+		fmt.Printf("ToLeave GetAllLeave error, %v", err)
+	}
+	c.HTML(http.StatusOK, "views/gbook.html", list)
+}
+
+func PostLeaveHandle(c *gin.Context){
+	comment := c.PostForm("comment")
+	author := c.PostForm("author")
+	email := c.PostForm("email")
+	err := logic.InsertLeave(comment, author, email)
+	if err != nil{
+		fmt.Printf("PostLeaveHandle InsertLeave error, %v", err)
+	}
+	c.Redirect(http.StatusMovedPermanently, "/leave/new/")
 }
